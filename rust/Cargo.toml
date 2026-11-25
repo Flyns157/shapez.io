@@ -14,6 +14,7 @@ publish = false
 [workspace.dependencies]
 shapez_core = { path = "crates/shapez_core" }
 shapez_sim = { path = "crates/shapez_sim" }
+shapez_render_shapes = { path = "crates/shapez_render_shapes" }
 bevy = { version = "0.20.1", default-features = false, features = ["2d", "ui", "audio", "png", "wav"] }
 
 [workspace.lints.rust]

@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-/// `Boot → Loading → MainMenu → InGame`.
+/// `Boot → Loading → MainMenu → InGame` (et la galerie des formes depuis le menu).
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
 pub enum AppState {
     #[default]
@@ -10,6 +10,8 @@ pub enum AppState {
     Loading,
     MainMenu,
     InGame,
+    /// Galerie des formes rastérisées (jalon M1).
+    ShapeGallery,
 }
 
 #[derive(Debug, Default)]

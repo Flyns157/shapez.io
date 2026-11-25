@@ -29,6 +29,9 @@ impl Plugin for MenuPlugin {
 struct PlayButton;
 
 #[derive(Component, Debug)]
+struct GalleryButton;
+
+#[derive(Component, Debug)]
 struct TickText;
 
 fn spawn_menu(mut commands: Commands) {
@@ -65,17 +68,35 @@ fn spawn_menu(mut commands: Commands) {
                 BackgroundColor(Color::srgb(0.2, 0.2, 0.25)),
                 children![Text::new("Jouer")],
             ),
+            (
+                GalleryButton,
+                Button,
+                ActivateOnPress,
+                Node {
+                    width: px(180),
+                    height: px(48),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                BackgroundColor(Color::srgb(0.2, 0.2, 0.25)),
+                children![Text::new("Formes")],
+            ),
         ],
     ));
 }
 
 fn start_game(
     activate: On<Activate>,
-    buttons: Query<(), With<PlayButton>>,
+    play: Query<(), With<PlayButton>>,
+    gallery: Query<(), With<GalleryButton>>,
     mut next: ResMut<NextState<AppState>>,
 ) {
-    if buttons.contains(activate.event_target()) {
+    let target = activate.event_target();
+    if play.contains(target) {
         next.set(AppState::InGame);
+    } else if gallery.contains(target) {
+        next.set(AppState::ShapeGallery);
     }
 }
 

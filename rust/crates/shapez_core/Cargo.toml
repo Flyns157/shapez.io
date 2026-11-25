@@ -1,6 +1,6 @@
 [package]
 name = "shapez_core"
-description = "Types de base de la simulation (grille, directions, rotations), sans dépendance à Bevy."
+description = "Types de base de la simulation (grille, formes, couleurs, items), sans dépendance à Bevy."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,6 +9,11 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+proptest = "1"
 
 [lints]
 workspace = true

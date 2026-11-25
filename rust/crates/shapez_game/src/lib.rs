@@ -3,7 +3,9 @@
 
 use bevy::prelude::*;
 
+pub mod gallery;
 pub mod menu;
+pub mod shape_textures;
 pub mod sim;
 pub mod state;
 
@@ -16,6 +18,7 @@ pub struct GamePlugin;
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((state::AppStatePlugin, sim::SimPlugin, menu::MenuPlugin))
+            .add_plugins((shape_textures::ShapeTexturesPlugin, gallery::GalleryPlugin))
             .add_systems(Startup, spawn_camera);
     }
 }

@@ -1,0 +1,16 @@
+[package]
+name = "shapez_render_shapes"
+description = "Rastérisation des formes en RGBA avec tiny-skia, sans dépendance à Bevy."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+shapez_core.workspace = true
+tiny-skia = { version = "0.12", default-features = false, features = ["std", "simd"] }
+
+[lints]
+workspace = true
