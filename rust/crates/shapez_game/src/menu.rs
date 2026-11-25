@@ -116,9 +116,10 @@ fn spawn_hud(mut commands: Commands) {
 
 fn update_hud(sim: Res<Sim>, speed: Res<GameSpeed>, mut text: Single<&mut Text, With<TickText>>) {
     text.0 = format!(
-        "Tick {} - vitesse x{} (1/2/4, espace = pause, Echap = menu)",
+        "Tick {} - vitesse x{} - graine {} (ZQSD/fleches, molette, clic droit; 1/2/4, espace, Echap)",
         sim.tick_count(),
-        speed.0
+        speed.0,
+        sim.map.seed()
     );
 }
 

@@ -9,7 +9,7 @@ dans [`../docs/plan-rust-bevy.md`](../docs/plan-rust-bevy.md).
 |---|---|---|
 | `crates/shapez_core` | Grille, formes (codes courts, opérations), couleurs, items, registre | non |
 | `crates/shapez_render_shapes` | Rastérisation des formes en RGBA (tiny-skia) | non |
-| `crates/shapez_sim` | Simulation déterministe à 60 ticks/s, en entiers | non |
+| `crates/shapez_sim` | Simulation déterministe à 60 ticks/s, en entiers ; génération de carte identique au JS | non |
 | `crates/shapez_game` | Binaire Bevy : rendu, entrées, UI | oui |
 | `xtask` | Tâches de développement | non |
 
@@ -23,7 +23,7 @@ Prérequis Linux : `libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev`.
 ```sh
 cd rust
 cargo xtask import-assets        # copie sprites, sons, polices et traductions dans assets/
-cargo run                        # ouvre la fenêtre du jeu
+cargo run                        # ouvre la fenêtre du jeu (SHAPEZ_SEED=1234 pour fixer la carte)
 cargo run --features dev         # idem, avec lien dynamique et outils de debug
 cargo test --workspace
 ```
@@ -34,9 +34,12 @@ cargo test --workspace
 
 Le code JS d'origine sert de spécification. `tools/js-oracle/` l'exécute dans Node
 (sans webpack) pour produire des vecteurs de test versionnés ; la CI n'a pas besoin de Node.
+Hors du fork, `SHAPEZ_JS_ROOT=/chemin/vers/shapez.io` indique où trouver le code JS.
 
 ```sh
 node tools/js-oracle/shapes.mjs > crates/shapez_core/tests/golden/shapes.json   # 2 000 cas
+node tools/js-oracle/rng.mjs > crates/shapez_core/tests/golden/alea.json
+node tools/js-oracle/map.mjs > crates/shapez_sim/tests/golden/map.json   # chunks (-15..15)², 3 graines
 node tools/js-oracle/shapes.mjs 10000 > /tmp/shapes.json
 SHAPEZ_GOLDEN_SHAPES=/tmp/shapes.json cargo test -p shapez_core --test golden_shapes
 ```

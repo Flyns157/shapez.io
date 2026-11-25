@@ -4,18 +4,32 @@
 //! logique travaille en entiers, pour rester déterministe (plan, §5.1 et §5.2).
 //! Les bâtiments, convoyeurs et wires arriveront aux jalons M3 et suivants.
 
+pub mod map;
+
 /// Fréquence fixe de la simulation.
 pub const TICKS_PER_SECOND: u32 = 60;
 
 /// État complet de la simulation.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct SimWorld {
     tick: u64,
+    /// Carte (ressources générées depuis la graine).
+    pub map: map::Map,
+}
+
+impl Default for SimWorld {
+    fn default() -> Self {
+        Self::new(0)
+    }
 }
 
 impl SimWorld {
-    pub fn new() -> Self {
-        Self::default()
+    /// Nouveau monde ; la graine est un entier comme `map.seed` dans le JS.
+    pub fn new(seed: u32) -> Self {
+        Self {
+            tick: 0,
+            map: map::Map::new(seed),
+        }
     }
 
     /// Numéro du tick courant (0 au démarrage).
@@ -42,7 +56,7 @@ mod tests {
 
     #[test]
     fn advances_by_whole_ticks() {
-        let mut world = SimWorld::new();
+        let mut world = SimWorld::new(0);
         world.advance(TICKS_PER_SECOND);
         assert_eq!(world.tick_count(), 60);
     }

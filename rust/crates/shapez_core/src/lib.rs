@@ -6,10 +6,12 @@ pub mod color;
 pub mod grid;
 pub mod item;
 pub mod registry;
+pub mod rng;
 pub mod shape;
 
 pub use color::Color;
 pub use grid::{Direction, Rotation, TilePos};
 pub use item::Item;
 pub use registry::{ShapeId, ShapeRegistry};
+pub use rng::Alea;
 pub use shape::{Layer, ParseShapeError, Quadrant, ShapeDef, SubShape};

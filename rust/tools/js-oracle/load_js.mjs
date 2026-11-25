@@ -10,7 +10,10 @@ import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-export const JS_ROOT = path.resolve(here, "../../../src/js");
+// Racine `src/js` du jeu d'origine : variable SHAPEZ_JS_ROOT, sinon le dépôt parent.
+export const JS_ROOT = process.env.SHAPEZ_JS_ROOT
+    ? path.resolve(process.env.SHAPEZ_JS_ROOT, "src/js")
+    : path.resolve(here, "../../../src/js");
 
 /**
  * @param {string} relPath chemin relatif à src/js, par exemple "game/colors.js"

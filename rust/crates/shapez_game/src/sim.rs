@@ -27,13 +27,29 @@ impl Plugin for SimPlugin {
         app.insert_resource(Time::<Fixed>::from_hz(f64::from(TICKS_PER_SECOND)))
             .init_resource::<GameSpeed>()
             .add_systems(OnEnter(AppState::InGame), |mut commands: Commands| {
-                commands.insert_resource(Sim::default());
+                commands.insert_resource(Sim(SimWorld::new(new_game_seed())));
             })
             .add_systems(OnExit(AppState::InGame), |mut commands: Commands| {
                 commands.remove_resource::<Sim>();
             })
             .add_systems(FixedUpdate, step_sim.run_if(in_state(AppState::InGame)));
     }
+}
+
+/// Graine d'une nouvelle partie, entre 0 et 100 000 comme `randomInt(0, 100000)` du JS.
+/// `SHAPEZ_SEED` permet de la fixer (pour comparer avec une partie JS).
+fn new_game_seed() -> u32 {
+    if let Some(seed) = std::env::var("SHAPEZ_SEED")
+        .ok()
+        .and_then(|s| s.parse().ok())
+    {
+        return seed;
+    }
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.subsec_nanos())
+        .unwrap_or(0);
+    nanos % 100_001
 }
 
 /// On ne modifie jamais `dt` : accélérer revient à exécuter plusieurs ticks.
