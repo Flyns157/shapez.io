@@ -1,0 +1,7 @@
+/target
+# Assets importés depuis res_raw/ et translations/ par `cargo xtask import-assets`.
+/assets/sprites
+/assets/sounds
+/assets/i18n
+/assets/fonts
+/assets/IMPORTED.txt

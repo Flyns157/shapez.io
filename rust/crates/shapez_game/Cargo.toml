@@ -1,0 +1,21 @@
+[package]
+name = "shapez_game"
+description = "Binaire Bevy : rendu, entrées, UI et cycle de vie de l'application."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+default-run = "shapez_game"
+
+[dependencies]
+bevy.workspace = true
+shapez_sim.workspace = true
+
+[features]
+# Compilation incrémentale plus rapide en dev : `cargo run --features dev`.
+dev = ["bevy/dynamic_linking", "bevy/bevy_dev_tools"]
+
+[lints]
+workspace = true

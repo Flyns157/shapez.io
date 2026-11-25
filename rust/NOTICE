@@ -1,0 +1,19 @@
+shapez-rs — réécriture en Rust (Bevy) de shapez.io
+Copyright (C) 2026 les contributeurs de shapez-rs
+
+Ce projet est une œuvre dérivée de shapez.io (https://github.com/tobspr-games/shapez.io),
+Copyright (C) tobspr Games et les contributeurs listés dans ../CONTRIBUTORS,
+distribué sous licence GNU GPL version 3.
+
+Les algorithmes de simulation sont portés depuis le code JavaScript d'origine (src/js/).
+Les sprites, sons, polices et traductions copiés par `cargo xtask import-assets`
+proviennent de res_raw/, res/ et translations/ du même dépôt, sous la même licence.
+La musique d'origine n'est importée qu'avec `--music` : ses droits sont à vérifier
+avant toute distribution publique.
+
+« shapez » et son logo sont des marques de tobspr Games. Ce projet n'est ni affilié ni
+approuvé par tobspr Games.
+
+Ce programme est un logiciel libre : vous pouvez le redistribuer et/ou le modifier selon
+les termes de la GNU General Public License publiée par la Free Software Foundation,
+version 3 ou (à votre choix) toute version ultérieure. Voir ../LICENSE.

@@ -1,0 +1,37 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "xtask"]
+default-members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97.1"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/Flyns157/shapez.io"
+publish = false
+
+[workspace.dependencies]
+shapez_core = { path = "crates/shapez_core" }
+shapez_sim = { path = "crates/shapez_sim" }
+bevy = { version = "0.20.1", default-features = false, features = ["2d", "ui", "audio", "png", "wav"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+# La simulation doit rester déterministe : pas de flottants implicites dans la logique.
+float_arithmetic = "allow"
+
+# Bevy reste fluide en debug : les dépendances sont optimisées, notre code non.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
