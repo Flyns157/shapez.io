@@ -30,6 +30,10 @@
    l'algorithme ligne à ligne fait du projet Rust une œuvre dérivée, qui doit donc être
    publiée sous GPLv3. Il faut aussi éviter le nom « shapez » pour une distribution publique
    (voir §2).
+6. **Mémoire : arènes typées dans la simulation.** Bâtiments, `BeltPath` et composants vivent
+   dans des arènes à index générationnels (`slotmap`), sans `Rc<RefCell>`. `bumpalo` n'arrive
+   pour les données temporaires que si un profil le justifie, et Bevy n'a pas besoin d'arène
+   (voir §3.3).
 
 ---
 
@@ -195,6 +199,51 @@ SimWorld
 └── events: Vec<SimEvent>        (vidé chaque frame par Bevy)
 ```
 
+### 3.3 Stratégie mémoire : arènes typées
+
+Le JS repose sur des références d'objets croisées (un `BeltPath` pointe vers ses entités,
+un éjecteur garde `cachedBeltPath` et `cachedTargetEntity`, etc.). En Rust, les reproduire
+avec `Rc<RefCell<…>>` ou des pointeurs serait lent, fragile et non sérialisable. La règle
+retenue tient en trois points.
+
+1. **Cœur de simulation (crates sans Bevy) : arènes typées à index générationnels, dès M3/M4.**
+   - Une arène par type d'objet : `SlotMap<BuildingId, Building>`, `SlotMap<PathId, BeltPath>`
+     et, à l'intérieur de chaque `BeltPath`, des tableaux denses `Vec<Item>` et `Vec<u32>`
+     (SoA, §5.4). Les stores de composants (éjecteurs, accepteurs, processeurs…) sont des
+     `Vec<T>` indexés par un `u32`, ou des `SecondaryMap<BuildingId, T>`.
+   - Toutes les références croisées deviennent des **index** (`BuildingId`, `PathId`,
+     `SlotRef { building, slot: u8 }`). La génération embarquée dans l'index détecte les
+     références périmées : un cache d'éjecteur qui pointe vers un chemin supprimé est
+     simplement invalidé, sans crash ni use-after-free.
+   - Bénéfices : pas de `Rc<RefCell>` ni de durées de vie complexes (le borrow checker
+     reste simple : on emprunte l'arène, pas l'objet), données contiguës et donc
+     amicales pour le cache, ordre d'itération **déterministe** (ordre des slots, jamais
+     d'adresses mémoire), et **sérialisation directe** pour la sauvegarde (`slotmap`
+     supporte `serde`, les index se sauvegardent tels quels ou sont recompactés au
+     chargement).
+   - Les items sur convoyeurs ne sont pas des objets individuels alloués : ce sont des
+     valeurs `Copy` de 8 octets (`Item`) rangées dans les tableaux du `BeltPath`. Les formes
+     sont internées une fois dans le `ShapeRegistry` (`ShapeId(u32)`).
+   - Les objets se suppriment via l'arène (libération du slot, génération incrémentée), avec
+     une liste de suppression différée vidée en fin de tick pour ne pas invalider des index
+     en cours d'itération.
+
+2. **Données temporaires par tick ou par frame : `bumpalo`, uniquement si le profilage le
+   justifie.** Exemples : calcul du chemin de pose de convoyeurs lors du glisser, listes de
+   candidats pour la résolution des remises (phase B du §5.4), batching du rendu des items,
+   recalcul des réseaux de wires. Par défaut, on réutilise des `Vec` conservés d'un tick à
+   l'autre (`clear()` sans libérer la capacité), ce qui suffit le plus souvent. `bumpalo`
+   (une arène remise à zéro à chaque tick ou frame) n'est introduit qu'**au jalon M10, si
+   un profil montre que les allocations temporaires coûtent cher**.
+
+3. **Côté Bevy : pas d'arène.** L'ECS de Bevy range déjà les composants dans des tables
+   contiguës par archétype, et ses `Entity` sont elles-mêmes des index générationnels.
+   Ajouter une arène par-dessus n'apporterait rien. La correspondance simulation vers rendu
+   se fait par une table `HashMap<BuildingId, Entity>` (ou `SecondaryMap`) dans le plugin de
+   synchronisation.
+
+### 3.4 Commandes et événements
+
 - **Commandes en entrée** (`enum SimCommand { Place{..}, Remove{..}, Rotate{..},
   PasteBlueprint{..}, BuyUpgrade{..}, SetLever{..}, ... }`) : toute mutation passe par
   une commande. On obtient l'undo/redo, les replays de tests et, plus tard, éventuellement
@@ -203,7 +252,7 @@ SimWorld
   `UpgradeUnlocked`, `ItemDelivered`, etc.) : consommés par Bevy pour le rendu, les sons et
   les notifications.
 
-### 3.3 Plugins Bevy (crate `shapez_game`)
+### 3.5 Plugins Bevy (crate `shapez_game`)
 
 | Plugin | Contenu |
 |---|---|
@@ -272,7 +321,9 @@ Règles :
 | Audio | audio intégré à Bevy (ou `bevy_kira_audio` 0.27 pour les fondus de musique) | — | Commencer avec l'intégré |
 | Tilemap du sol | `bevy_ecs_tilemap` 0.20 **ou** maillage maison par chunk | — | Un maillage maison de 16×16 quads par chunk est simple et suffisant ; ne garder la crate que si elle simplifie |
 | Rastérisation des formes | `tiny-skia` | dernière | Reproduit fidèlement les chemins du Canvas 2D (arcs, étoiles, moulins) |
-| Collections | `slotmap`, `ahash` / `rustc-hash`, `smallvec` | — | IDs stables, hash rapide **non utilisé pour l'ordre d'itération** |
+| Arènes typées (simulation) | `slotmap` (avec la feature `serde`) | — | Index générationnels pour bâtiments, `BeltPath` et stores de composants, sans `Rc<RefCell>`, déterministes et sérialisables (§3.3) |
+| Collections | `ahash` / `rustc-hash`, `smallvec` | — | Hash rapide **non utilisé pour l'ordre d'itération** |
+| Arène temporaire (conditionnelle) | `bumpalo` | — | Allocations par tick ou par frame, **seulement si le profilage le justifie** (jalon M10, §3.3) |
 | RNG | port d'**Alea** (maison, ~40 lignes) + `rand_xoshiro` | 0.8 | Alea pour la génération de carte compatible JS, Xoshiro pour le reste |
 | Sérialisation | `serde`, `postcard` (1.2), `zstd`, `ron` | — | Sauvegarde binaire compacte, données lisibles |
 | Import des saves JS | `lz-str`, `serde_json` | — | Décompression LZ-string et JSON |
@@ -497,14 +548,14 @@ connaissant Rust et débutant sur Bevy. Ce sont des ordres de grandeur, pas des 
 | **M0** | Fondations | Workspace, licence GPLv3, CI, `xtask import-assets`, fenêtre Bevy vide, états | `cargo run` ouvre une fenêtre, CI verte | 1–2 sem |
 | **M1** | Formes | `ShapeDef`, codes courts, opérations, couleurs, `ShapeRegistry`, rastérisation tiny-skia, oracle JS des formes | 100 % des vecteurs golden passent ; une galerie de formes s'affiche dans Bevy | 2–3 sem |
 | **M2** | Carte et caméra | Port d'Alea, génération des chunks identique au JS, rendu du sol et des ressources par chunk, caméra pan et zoom, vue d'ensemble | Même seed que le JS, même carte (golden) ; 60 FPS en se déplaçant librement | 2–3 sem |
-| **M3** | Placement | Grille d'occupation, `SimCommand::Place/Remove`, fantôme, rotation (R), variantes (T), glisser de convoyeurs avec orientation auto, suppression (X / clic droit), pipette | On peut construire des lignes de convoyeurs et des bâtiments (inactifs) | 2–3 sem |
-| **M4** | **Simulation MVP (jouable)** | Extracteurs (et chaînables), `BeltPath` complet, éjecteurs et accepteurs, tunnels T1/T2, trash, équilibreur (fusion et séparation), découpeur (et quad), rotateurs, empileur, peintres (simple, double, quad sans wires), mélangeur, hub, tick fixe et vitesses, rendu des items | **On joue les niveaux 1 à 10** ; scénarios de débit et de déterminisme verts | 5–7 sem |
+| **M3** | Placement | Grille d'occupation, `SimCommand::Place/Remove`, fantôme, rotation (R), variantes (T), glisser de convoyeurs avec orientation auto, suppression (X / clic droit), pipette | On peut construire des lignes de convoyeurs et des bâtiments (inactifs). Bâtiments stockés dès ce jalon dans l'arène `SlotMap<BuildingId, Building>` (§3.3) | 2–3 sem |
+| **M4** | **Simulation MVP (jouable)** | Extracteurs (et chaînables), `BeltPath` complet, éjecteurs et accepteurs, tunnels T1/T2, trash, équilibreur (fusion et séparation), découpeur (et quad), rotateurs, empileur, peintres (simple, double, quad sans wires), mélangeur, hub, tick fixe et vitesses, rendu des items. `BeltPath` et stores de composants en arènes typées, références croisées en index générationnels | **On joue les niveaux 1 à 10** ; scénarios de débit et de déterminisme verts | 5–7 sem |
 | **M5** | Progression et HUD | 26 niveaux et freeplay (port de `computeFreeplayShape`), shop d'upgrades et paliers infinis, notifications de déblocage, formes épinglées, statistiques, objectif du hub, tutoriel minimal | Partie complète jouable jusqu'au freeplay (sans wires) | 3–4 sem |
 | **M6** | Sauvegarde | Format natif, autosave, menu de sauvegardes, migrations ; import JS en option | Sauvegarde et chargement sans perte (test de hash) ; import d'une save JS de référence (option) | 2–3 sem |
 | **M7** | Confort de construction | Sélection de masse, copier-couper-coller, blueprints (coût en formes), undo/redo via les commandes, waypoints | Parité avec le JS sur ces fonctions | 2–3 sem |
 | **M8** | Wires | Couche wires, wires et tunnels de wires, pins, signal constant, levier, portes ET/OU/NON/XOR, transistor, filtre, lecteur de convoyeur, afficheur, analyseur, comparateur, processeurs virtuels, peintre quad piloté | Les schémas wires classiques (filtre auto, horloges) fonctionnent | 4–5 sem |
 | **M9** | Finitions | Menu principal, paramètres, rebinding, audio et musique, i18n (34 langues), thèmes clair et sombre, aide daltonien, captures d'écran | Expérience complète | 3–4 sem |
-| **M10** | Performance et distribution | Chemins dormants, parallélisme, rendu instancié, benchmarks à 500k tuiles, builds Windows, macOS, Linux et WASM | Objectifs du §5.4 atteints ; binaires publiés | 3–4 sem |
+| **M10** | Performance et distribution | Chemins dormants, parallélisme, rendu instancié, benchmarks à 500k tuiles, profilage des allocations puis **introduction de `bumpalo` uniquement si le profil le justifie**, builds Windows, macOS, Linux et WASM | Objectifs du §5.4 atteints ; binaires publiés | 3–4 sem |
 | Plus tard | Mode puzzle, mods | Voir §11 | — | — |
 
 **Total jusqu'à M6 (jeu solo complet sans wires et sauvegardable) : environ 19 à 28 semaines.**
